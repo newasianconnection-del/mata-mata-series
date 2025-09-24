@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mata-Mata de Séries</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #1e1e1e;
+    color: #fff;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  h1 { margin-top: 20px; }
+  .round-info {
+    margin-top: 15px;
+    font-size: 18px;
+    color: #FFD700;
+  }
+  .series-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 25px;
+    margin-top: 25px;
+  }
+  .series-card {
+    cursor: pointer;
+    width: 180px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #444;
+    background-color: #2b2b2b;
+  }
+  .series-card:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px #FFD700;
+  }
+  .series-card img {
+    width: 100%;
+    display: block;
+  }
+  .series-card p {
+    margin: 10px 0;
+  }
+  #winner {
+    margin-top: 40px;
+    font-size: 36px;
+    font-weight: bold;
+    color: #FFD700;
+    position: relative;
+    z-index: 10;
+  }
+  table {
+    margin: 30px auto;
+    border-collapse: collapse;
+    width: 80%;
+  }
+  th, td {
+    border: 1px solid #555;
+    padding: 8px 12px;
+  }
+  th {
+    background-color: #333;
+    color: #FFD700;
+  }
+  td {
+    background-color: #2b2b2b;
+  }
+
+  /* Troféu */
+  #winner::before {
+    content: "🏆 ";
+  }
+  #winner::after {
+    content: " 🏆";
+  }
+
+  /* Fogos de artifício animados */
+  .firework {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: explode 1s ease-out forwards;
+    z-index: 9;
+  }
+  @keyframes explode {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Mata-Mata de Séries</h1>
+<div class="round-info" id="round-title">Rodada 1</div>
+
+<div class="series-container" id="series-container"></div>
+
+<div id="winner"></div>
+
+<h2>Histórico de Confrontos</h2>
+<table id="history-table">
+  <thead>
+    <tr>
+      <th>Rodada</th>
+      <th>Confronto</th>
+      <th>Vencedor</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- Áudio de aplausos/fogos e clique -->
+<audio id="winner-sound" src="https://www.fesliyanstudios.com/play-mp3/387" preload="auto"></audio>
+<audio id="click-sound" src="https://www.fesliyanstudios.com/play-mp3/387" preload="auto"></audio>
+
+<script>
+const seriesList = [
+  {name: "Queendom", img: "https://image.tmdb.org/t/p/w600_and_h900_bestv2/82PMS9O9je5hF8xu0f9P7Qenrdu.jpg"},
+  {name: "Pluto", img: "https://m.media-amazon.com/images/M/MV5BOTgwMzEwZjQtZjY2NC00ZTZiLTgwZTctMTc3OWI3MDY0MzNkXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"},
+  {name: "Reverse with Me", img: "https://pic9.iqiyipic.com/image/20250613/fb/23/a_100604842_m_601_en_m1_260_360.jpg"},
+  {name: "Us The Series", img: "https://m.media-amazon.com/images/M/MV5BNDY4NzcwYTAtMWQ0Yi00YmJiLWFhNjItMzNlOWVlMWQzNGExXkEyXkFqcGc@._V1_.jpg"},
+  {name: "Only You", img: "https://m.media-amazon.com/images/M/MV5BMzRiNWM4YjctODlhMS00ODEzLThlYTAtODRmOWNjOGE3NWE4XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"},
+  {name: "Whale Store", img: "https://m.media-amazon.com/images/M/MV5BY2Y0ODNhZGQtYTEwMC00ZmU5LTgzN2ItMWJmOTcxZmQyMGZhXkEyXkFqcGc@._V1_QL75_UY281_CR18,0,190,281_.jpg"},
+  {name: "Somewhere Somehow", img: "https://m.media-amazon.com/images/M/MV5BMmRmNGFjZTEtYzBjZi00Njg5LWI1Y2YtNDJiNjMwZTcwMjVlXkEyXkFqcGc@._V1_.jpg"},
+  {name: "Denied Love", img: "https://m.media-amazon.com/images/M/MV5BYjBkOGJhZDYtZWJiNi00MzE5LWFmN2ItZTE4YTNjZTdiNGUyXkEyXkFqcGc@._V1_QL75_UY281_CR18,0,190,281_.jpg"},
+  {name: "The Secret Of Us", img: "https://m.media-amazon.com/images/M/MV5BYjA4NzhiNGMtMTg2Ni00NGRlLWE2ZDAtMDc4ZmUxYzcyMjNlXkEyXkFqcGc@._V1_.jpg"},
+  {name: "Harmony Secret", img: "https://m.media-amazon.com/images/M/MV5BNjEzMTZkNTUtMDc4Yi00MzE4LTgwZjctNzFmNzQ4ODU0ZjkzXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"},
+  {name: "Roller Coaster", img: "https://www.saficas.com.br/wp-content/uploads/2025/07/Guvt8CTXQAAy8q_.jpeg"},
+  {name: "Reverse 4 You", img: "https://m.media-amazon.com/images/M/MV5BZDNiOGJlNWMtMTVkYy00ZTJmLTk0YzMtMGRmM2ZhYWJhMDc2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"},
+  {name: "The Royal Pin", img: "https://i.pinimg.com/736x/e1/02/82/e1028201ac071dde73464290849d7d2b.jpg"},
+  {name: "GAP The Series", img: "https://image.tmdb.org/t/p/w500/jF7kr8IotMYsbef1cVj6Mebvfi0.jpg"},
+  {name: "Affair", img: "https://i.mydramalist.com/XdOP4w_4f.jpg"},
+  {name: "Blank", img: "https://m.media-amazon.com/images/M/MV5BOWU1M2ZkMDctYmRmYy00MTA0LWEwMzgtZjRkYTRjOTM0YjM1XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"},
+  {name: "My Marvellous Dream Is You", img: "https://m.media-amazon.com/images/M/MV5BMTNkMjNmODQtMDEzYS00OGNlLTkxNWYtYzUzZTZlODVkYjkxXkEyXkFqcGc@._V1_.jpg"},
+  {name: "23.5", img: "https://m.media-amazon.com/images/M/MV5BYjk5OTY1MzctNTA0YS00M2Q2LThiYjktZGY0Y2VjNTYwY2Y4XkEyXkFqcGc@._V1_QL75_UY281_CR18,0,190,281_.jpg"},
+  {name: "Apple My Love", img: "https://m.media-amazon.com/images/M/MV5BYzA5MzY2M2ItMGQ0ZC00MjY3LThjZWYtNmFhZTU2ZDk2ZTkyXkEyXkFqcGc@._V1_.jpg"},
+  {name: "Petrichor", img: "https://m.media-amazon.com/images/M/MV5BMDk2NzJlM2YtNGZmOS00NzA0LThjZTQtMDZiYmVlZWJjYTA2XkEyXkFqcGc@._V1_.jpg"},
+  {name: "Love Senior", img: "https://pic3.iqiyipic.com/image/20250403/62/fb/a_100551470_m_601_en_m1_260_360.jpg"},
+  {name: "Mate", img: "https://m.media-amazon.com/images/M/MV5BNjQ3OTI3NmMtZTQwNi00Y2EwLWEwZDAtM2E4OGRhNzUyZGIwXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"}
+];
+
+let currentRound = [];
+let nextRound = [];
+let roundNumber = 1;
+let history = [];
+
+function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
+
+function startRound() {
+  if (seriesList.length === 0 && nextRound.length === 1) { showWinner(nextRound[0]); return; }
+  if (currentRound.length === 0) { currentRound = shuffle(nextRound.length ? nextRound : [...seriesList]); nextRound = []; roundNumber++; }
+  showPair();
+}
+
+function showPair() {
+  const container = document.getElementById("series-container");
+  container.innerHTML = "";
+  if (currentRound.length === 1) { nextRound.push(currentRound.pop()); startRound(); return; }
+  const series1 = currentRound.pop();
+  const series2 = currentRound.pop();
+  container.appendChild(createSeriesElement(series1, series2));
+  container.appendChild(createSeriesElement(series2, series1));
+}
+
+function createSeriesElement(series, opponent) {
+  const card = document.createElement("div");
+  card.className = "series-card";
+  card.onclick = () => {
+    nextRound.push(series);
+    history.push({round: roundNumber, matchup: `${series.name} x ${opponent.name}`, winner: series.name});
+    updateHistoryTable();
+    document.getElementById("round-title").innerText = `Rodada ${roundNumber}`;
+    document.getElementById("click-sound").play();
+    startRound();
+  };
+  const img = document.createElement("img"); img.src = series.img; img.alt = series.name;
+  const p = document.createElement("p"); p.textContent = series.name;
+  card.appendChild(img); card.appendChild(p);
+  return card;
+}
+
+function updateHistoryTable() {
+  const tbody = document.querySelector("#history-table tbody"); tbody.innerHTML = "";
+  history.forEach(h => { const tr = document.createElement("tr"); tr.innerHTML = `<td>${h.round}</td><td>${h.matchup}</td><td>${h.winner}</td>`; tbody.appendChild(tr); });
+}
+
+function showWinner(series) {
+  document.getElementById("series-container").innerHTML = "";
+  document.getElementById("round-title").innerText = "🏆 Campeã! 🏆";
+  document.getElementById("winner").innerHTML = series.name;
+  document.getElementById("winner-sound").play();
+
+  setInterval(() => {
+    const firework = document.createElement("div"); firework.className = "firework";
+    const colors = ["#FFD700", "#FF4500", "#00BFFF", "#FF69B4", "#7CFC00"];
+    firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    const x = (Math.random() * window.innerWidth - window.innerWidth/2) + "px";
+    const y = (Math.random() * window.innerHeight - window.innerHeight/2) + "px";
+    firework.style.setProperty('--x', x); firework.style.setProperty('--y', y);
+    document.body.appendChild(firework); setTimeout(() => firework.remove(), 1200);
+  }, 150);
+}
+
+startRound();
+</script>
+</body>
+</html>
